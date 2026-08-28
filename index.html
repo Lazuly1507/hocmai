@@ -430,6 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderSubjects();
   initSpeedControls();
   initMobile();
+  initAutoPlayNext();
 
   // Restore last subject
   const last = localStorage.getItem("hm_subject");
@@ -589,12 +590,21 @@ function playVideo(subject, month, session, index) {
   // Scroll
   document.getElementById("playerSection").scrollIntoView({ behavior: "smooth", block: "start" });
 
-  // Auto-play next when ended
-  video.onended = () => {
-    if (index + 1 < videos.length) {
-      playVideo(subject, month, session, index + 1);
+}
+
+function initAutoPlayNext() {
+  const video = document.getElementById("video");
+  video.addEventListener("ended", () => {
+    if (!currentVideo) return;
+
+    const { subject, month, session, index } = currentVideo;
+    const videos = DATA[subject]?.[month]?.[session] || [];
+    const nextIndex = index + 1;
+
+    if (nextIndex < videos.length) {
+      playVideo(subject, month, session, nextIndex);
     }
-  };
+  });
 }
 
 /* ======================================================
