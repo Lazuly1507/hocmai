@@ -541,12 +541,15 @@ function renderContent(subject) {
 /* ======================================================
    VIDEO PLAYER
    ====================================================== */
-function playVideo(subject, month, session, index, resumeTime = 0) {
+function playVideo(subject, month, session, index, resumeTime = null) {
   const videos = DATA[subject]?.[month]?.[session];
   if (!videos || !videos[index]) return;
 
-  const url = videos[index];
   const video = document.getElementById("video");
+  savePlaybackPosition(video);
+
+  const url = videos[index];
+  const savedTime = resumeTime === null ? getSavedTime(subject, month, session, index, url) : resumeTime;
   const src = url;
 
   // Show player
@@ -574,7 +577,7 @@ function playVideo(subject, month, session, index, resumeTime = 0) {
     hls.loadSource(src);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      restoreVideoTime(video, resumeTime, () => video.play().catch(() => {}));
+      restoreVideoTime(video, savedTime, () => video.play().catch(() => {}));
     });
     hls.on(Hls.Events.ERROR, (_e, data) => {
       if (data.fatal) {
@@ -583,13 +586,13 @@ function playVideo(subject, month, session, index, resumeTime = 0) {
     });
   } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
     video.src = src;
-    restoreVideoTime(video, resumeTime, () => video.play().catch(() => {}));
+    restoreVideoTime(video, savedTime, () => video.play().catch(() => {}));
   } else {
     showError("Trình duyệt không hỗ trợ phát HLS. Dùng Chrome hoặc Safari.");
   }
 
   // State
-  currentVideo = { subject, month, session, index, url, currentTime: resumeTime };
+  currentVideo = { subject, month, session, index, url, currentTime: savedTime };
   localStorage.setItem("hm_video", JSON.stringify(currentVideo));
 
   // Scroll
@@ -630,6 +633,27 @@ function savePlaybackPosition(video) {
   if (!currentVideo || !Number.isFinite(video.currentTime)) return;
   currentVideo.currentTime = video.currentTime;
   localStorage.setItem("hm_video", JSON.stringify(currentVideo));
+
+  try {
+    const history = JSON.parse(localStorage.getItem("hm_video_history") || "{}");
+    history[videoKey(currentVideo)] = video.currentTime;
+    localStorage.setItem("hm_video_history", JSON.stringify(history));
+  } catch {
+    localStorage.removeItem("hm_video_history");
+  }
+}
+
+function getSavedTime(subject, month, session, index, url) {
+  try {
+    const history = JSON.parse(localStorage.getItem("hm_video_history") || "{}");
+    return Number(history[videoKey({ subject, month, session, index, url })]) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function videoKey(video) {
+  return [video.subject, video.month, video.session, video.index, video.url].join("|");
 }
 
 function restoreLastVideo() {
