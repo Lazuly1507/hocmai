@@ -406,7 +406,7 @@
 <!-- HLS.js -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <!-- Data -->
-<script src="data.js"></script>
+<script src="data.js?v=20260828"></script>
 
 <script>
 /* ======================================================
@@ -431,12 +431,15 @@ document.addEventListener("DOMContentLoaded", () => {
   initSpeedControls();
   initMobile();
   initAutoPlayNext();
+  initPlaybackPersistence();
 
   // Restore last subject
   const last = localStorage.getItem("hm_subject");
   const subjects = Object.keys(DATA);
   if (last && DATA[last]) selectSubject(last);
   else if (subjects.length) selectSubject(subjects[0]);
+
+  restoreLastVideo();
 });
 
 /* ======================================================
@@ -538,7 +541,7 @@ function renderContent(subject) {
 /* ======================================================
    VIDEO PLAYER
    ====================================================== */
-function playVideo(subject, month, session, index) {
+function playVideo(subject, month, session, index, resumeTime = 0) {
   const videos = DATA[subject]?.[month]?.[session];
   if (!videos || !videos[index]) return;
 
@@ -570,7 +573,9 @@ function playVideo(subject, month, session, index) {
     hls = new Hls({ enableWorker: true });
     hls.loadSource(src);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      restoreVideoTime(video, resumeTime, () => video.play().catch(() => {}));
+    });
     hls.on(Hls.Events.ERROR, (_e, data) => {
       if (data.fatal) {
         showError("Không thể phát video. Kiểm tra link hoặc thử bật 1.1.1.1.");
@@ -578,13 +583,13 @@ function playVideo(subject, month, session, index) {
     });
   } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
     video.src = src;
-    video.play().catch(() => {});
+    restoreVideoTime(video, resumeTime, () => video.play().catch(() => {}));
   } else {
     showError("Trình duyệt không hỗ trợ phát HLS. Dùng Chrome hoặc Safari.");
   }
 
   // State
-  currentVideo = { subject, month, session, index, url };
+  currentVideo = { subject, month, session, index, url, currentTime: resumeTime };
   localStorage.setItem("hm_video", JSON.stringify(currentVideo));
 
   // Scroll
@@ -605,6 +610,47 @@ function initAutoPlayNext() {
       playVideo(subject, month, session, nextIndex);
     }
   });
+}
+
+function initPlaybackPersistence() {
+  const video = document.getElementById("video");
+  let lastSavedAt = 0;
+
+  video.addEventListener("timeupdate", () => {
+    if (!currentVideo || video.currentTime - lastSavedAt < 5) return;
+    lastSavedAt = video.currentTime;
+    savePlaybackPosition(video);
+  });
+
+  video.addEventListener("pause", () => savePlaybackPosition(video));
+  window.addEventListener("pagehide", () => savePlaybackPosition(video));
+}
+
+function savePlaybackPosition(video) {
+  if (!currentVideo || !Number.isFinite(video.currentTime)) return;
+  currentVideo.currentTime = video.currentTime;
+  localStorage.setItem("hm_video", JSON.stringify(currentVideo));
+}
+
+function restoreLastVideo() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("hm_video"));
+    if (!saved || !DATA[saved.subject]?.[saved.month]?.[saved.session]?.[saved.index]) return;
+    playVideo(saved.subject, saved.month, saved.session, saved.index, Number(saved.currentTime) || 0);
+  } catch {
+    localStorage.removeItem("hm_video");
+  }
+}
+
+function restoreVideoTime(video, time, onReady) {
+  const resume = Number(time) || 0;
+  const prepare = () => {
+    if (resume > 0 && resume < video.duration) video.currentTime = resume;
+    onReady();
+  };
+
+  if (video.readyState >= 1) prepare();
+  else video.addEventListener("loadedmetadata", prepare, { once: true });
 }
 
 /* ======================================================
