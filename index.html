@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Học Tập</title>
+  <meta name="description" content="Xem video bài giảng trực tuyến">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    button { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ===== VARIABLES ===== */
+    :root {
+      --bg-deep: #060610;
+      --bg-primary: #0b0b18;
+      --bg-secondary: #111122;
+      --bg-card: #161630;
+      --bg-card-hover: #1c1c40;
+      --bg-active: #22224a;
+
+      --text-primary: #e8e8f4;
+      --text-secondary: #8888aa;
+      --text-muted: #555577;
+
+      --accent: #7b6cf6;
+      --accent-light: #a89bff;
+      --accent-glow: rgba(123, 108, 246, 0.12);
+      --accent-glow-strong: rgba(123, 108, 246, 0.28);
+
+      --border: rgba(255, 255, 255, 0.06);
+      --border-light: rgba(255, 255, 255, 0.10);
+
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-fast: 0.15s ease;
+
+      --sidebar-w: 260px;
+
+      --c-toan: #5b8cf5;
+      --c-van: #c77dff;
+      --c-hoa: #34d399;
+      --c-sinh: #fb923c;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* subtle top glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 400px;
+      background: radial-gradient(ellipse, var(--accent-glow-strong) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ===== LAYOUT ===== */
+    .app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* ===== MOBILE HEADER ===== */
+    .mobile-header {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 56px;
+      background: rgba(11, 11, 24, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 90;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+    }
+    .menu-btn {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; border-radius: var(--radius-sm);
+      transition: background var(--transition-fast);
+    }
+    .menu-btn:hover { background: rgba(255,255,255,0.06); }
+    .mobile-title { font-weight: 600; font-size: 16px; }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 99;
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .sidebar-overlay.show { display: block; opacity: 1; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-deep) 100%);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: transform var(--transition);
+    }
+    .sidebar-brand {
+      padding: 24px 20px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #9b87f5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700; color: #fff;
+      box-shadow: 0 4px 16px var(--accent-glow-strong);
+      flex-shrink: 0;
+    }
+    .brand-text { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+
+    .subject-list { flex: 1; padding: 12px 8px; overflow-y: auto; }
+    .subject-item {
+      width: 100%; display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: var(--radius-sm);
+      transition: all var(--transition); text-align: left;
+      position: relative; margin-bottom: 2px;
+    }
+    .subject-item:hover { background: rgba(255,255,255,0.04); }
+    .subject-item.active { background: var(--accent-glow); }
+    .subject-item.active::before {
+      content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+      width: 3px; border-radius: 2px; background: var(--accent);
+    }
+    .subject-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+      transition: box-shadow var(--transition);
+    }
+    .subject-item.active .subject-icon,
+    .subject-item:hover .subject-icon { box-shadow: 0 0 14px var(--subject-color); }
+    .subject-name { font-weight: 500; font-size: 14px; flex: 1; }
+    .subject-count { font-size: 11px; color: var(--text-muted); }
+    .sidebar-footer {
+      padding: 16px 20px; border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--text-muted); text-align: center;
+    }
+
+    /* ===== MAIN ===== */
+    .main {
+      flex: 1; margin-left: var(--sidebar-w);
+      padding: 32px 40px; min-height: 100vh;
+    }
+
+    /* ===== BREADCRUMB ===== */
+    .breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 14px; flex-wrap: wrap; }
+    .bc-item { color: var(--text-secondary); cursor: pointer; transition: color var(--transition-fast); }
+    .bc-item:hover { color: var(--text-primary); }
+    .bc-item:last-child { color: var(--text-primary); font-weight: 500; }
+    .bc-sep { color: var(--text-muted); font-size: 16px; user-select: none; }
+
+    /* ===== WARNING BANNER ===== */
+    .warn-banner {
+      background: rgba(251,146,60,0.08);
+      border: 1px solid rgba(251,146,60,0.18);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px; margin-bottom: 24px;
+      font-size: 13px; color: #fb923c;
+      display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+    }
+    .warn-banner svg { flex-shrink: 0; margin-top: 2px; }
+
+    /* ===== PLAYER ===== */
+    .player-section {
+      max-height: 0; overflow: hidden; opacity: 0;
+      transition: max-height 0.5s ease, opacity 0.4s ease, margin 0.4s ease;
+      margin-bottom: 0;
+    }
+    .player-section.active { max-height: 700px; opacity: 1; margin-bottom: 32px; }
+
+    .player-wrap {
+      position: relative; width: 100%; max-width: 920px;
+      aspect-ratio: 16 / 9; border-radius: var(--radius-lg);
+      overflow: hidden; background: #000;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.45), 0 0 0 1px var(--border-light);
+    }
+    .player-wrap video { width: 100%; height: 100%; display: block; }
+
+    .player-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; margin-top: 12px; max-width: 920px; flex-wrap: wrap;
+    }
+    .now-playing {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text-secondary);
+    }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 var(--accent-glow-strong); opacity: 1; }
+      50% { box-shadow: 0 0 0 6px transparent; opacity: .6; }
+    }
+
+    .speed-ctrl {
+      display: flex; gap: 3px;
+      background: var(--bg-card); border-radius: 20px;
+      padding: 3px; border: 1px solid var(--border);
+    }
+    .speed-btn {
+      padding: 4px 10px; font-size: 12px; font-weight: 500;
+      border-radius: 16px; color: var(--text-secondary);
+      transition: all var(--transition-fast);
+    }
+    .speed-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+    .speed-btn.active {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 2px 10px var(--accent-glow-strong);
+    }
+
+    /* ===== ERROR TOAST ===== */
+    .error-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.25);
+      color: #f87171; padding: 10px 20px; border-radius: 10px;
+      font-size: 13px; z-index: 200;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    .error-toast.show { opacity: 1; }
+
+    /* ===== CONTENT ===== */
+    .month-section { margin-bottom: 36px; }
+    .month-title {
+      font-size: 20px; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .month-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border-light), transparent);
+    }
+
+    .sessions { display: flex; flex-direction: column; gap: 8px; }
+
+    .session-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color var(--transition);
+    }
+    .session-card:hover { border-color: var(--border-light); }
+
+    .session-hdr {
+      width: 100%; display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px; text-align: left;
+      transition: background var(--transition-fast);
+    }
+    .session-hdr:hover { background: rgba(255,255,255,0.02); }
+    .session-info { display: flex; align-items: center; gap: 12px; }
+    .session-name { font-size: 15px; font-weight: 500; }
+    .session-meta {
+      font-size: 11px; color: var(--text-muted);
+      background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px;
+    }
+    .session-chevron {
+      transition: transform var(--transition); color: var(--text-muted);
+      width: 20px; height: 20px;
+    }
+    .session-card.open .session-chevron { transform: rotate(180deg); }
+
+    .session-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.4s ease, padding 0.3s ease;
+    }
+    .session-card.open .session-body { max-height: 600px; padding-bottom: 8px; }
+
+    .video-list { padding: 0 8px; }
+    .video-item {
+      width: 100%; display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; border-radius: var(--radius-sm);
+      transition: all var(--transition-fast); text-align: left;
+    }
+    .video-item:hover { background: var(--bg-card-hover); }
+    .video-item.playing { background: var(--accent-glow); color: var(--accent-light); }
+
+    .vid-icon {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--bg-secondary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all var(--transition-fast);
+    }
+    .vid-icon svg { width: 12px; height: 12px; }
+    .video-item:hover .vid-icon { background: var(--accent); color: #fff; }
+    .video-item.playing .vid-icon {
+      background: var(--accent); color: #fff;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .vid-name { font-size: 14px; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty {
+      text-align: center; padding: 80px 20px; color: var(--text-muted);
+    }
+    .empty-icon { font-size: 52px; margin-bottom: 16px; opacity: .45; }
+    .empty-title { font-size: 18px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }
+    .empty-desc { font-size: 13px; max-width: 420px; margin: 0 auto; line-height: 1.7; }
+    .empty code {
+      background: var(--bg-card); padding: 2px 6px; border-radius: 4px;
+      font-size: 12px; color: var(--accent-light);
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .mobile-header { display: flex; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding: 68px 16px 24px; }
+      .player-wrap { border-radius: var(--radius); }
+      .player-bar { flex-direction: column; align-items: flex-start; }
+      .month-title { font-size: 17px; }
+      .session-hdr { padding: 12px 14px; }
+      .video-item { padding: 8px 12px; }
+    }
+    @media (max-width: 480px) {
+      .speed-ctrl { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ===== MOBILE HEADER ===== -->
+  <header class="mobile-header">
+    <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <span class="mobile-title">Video Học Tập</span>
+  </header>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">▶</div>
+      <span class="brand-text">Video Học Tập</span>
+    </div>
+    <nav class="subject-list" id="subjectList"></nav>
+    <div class="sidebar-footer">HLS Player &middot; 2025</div>
+  </aside>
+
+  <!-- ===== SIDEBAR OVERLAY ===== -->
+  <div class="sidebar-overlay" id="overlay"></div>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main" id="main">
+    <div class="breadcrumb" id="breadcrumb"></div>
+
+    <!-- Player -->
+    <section class="player-section" id="playerSection">
+      <div class="player-wrap">
+        <video id="video" controls playsinline></video>
+      </div>
+      <div class="player-bar">
+        <div class="now-playing" id="nowPlaying">
+          <span class="pulse-dot"></span>
+          <span id="nowText">Đang phát...</span>
+        </div>
+        <div class="speed-ctrl" id="speedCtrl">
+          <button class="speed-btn" data-speed="0.5">0.5×</button>
+          <button class="speed-btn" data-speed="0.75">0.75×</button>
+          <button class="speed-btn active" data-speed="1">1×</button>
+          <button class="speed-btn" data-speed="1.25">1.25×</button>
+          <button class="speed-btn" data-speed="1.5">1.5×</button>
+          <button class="speed-btn" data-speed="2">2×</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Content -->
+    <section class="content" id="content"></section>
+  </main>
+</div>
+
+<!-- Error toast -->
+<div class="error-toast" id="errorToast"></div>
+
+<!-- HLS.js -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+<!-- Data -->
+<script src="data.js"></script>
+
+<script>
+/* ======================================================
+   APP STATE
+   ====================================================== */
+const SUBJECT_META = {
+  "Toán": { icon: "📐", color: "var(--c-toan)" },
+  "Văn":  { icon: "📝", color: "var(--c-van)"  },
+  "Hóa":  { icon: "⚗️", color: "var(--c-hoa)"  },
+  "Sinh": { icon: "🧬", color: "var(--c-sinh)" },
+};
+
+let hls = null;
+let currentSubject = null;
+let currentVideo = null;  // { subject, month, session, index, url }
+
+/* ======================================================
+   INIT
+   ====================================================== */
+document.addEventListener("DOMContentLoaded", () => {
+  renderSubjects();
+  initSpeedControls();
+  initMobile();
+
+  // Restore last subject
+  const last = localStorage.getItem("hm_subject");
+  const subjects = Object.keys(DATA);
+  if (last && DATA[last]) selectSubject(last);
+  else if (subjects.length) selectSubject(subjects[0]);
+});
+
+/* ======================================================
+   SIDEBAR — SUBJECTS
+   ====================================================== */
+function renderSubjects() {
+  const el = document.getElementById("subjectList");
+  el.innerHTML = Object.keys(DATA).map(name => {
+    const m = SUBJECT_META[name] || { icon: "📚", color: "var(--accent)" };
+    const count = countVideos(name);
+    return `<button class="subject-item" data-subject="${esc(name)}" style="--subject-color:${m.color}">
+      <span class="subject-icon" style="background:${m.color}20; color:${m.color}">${m.icon}</span>
+      <span class="subject-name">${esc(name)}</span>
+      <span class="subject-count">${count}</span>
+    </button>`;
+  }).join("");
+
+  // Event delegation
+  el.addEventListener("click", e => {
+    const btn = e.target.closest(".subject-item");
+    if (btn) selectSubject(btn.dataset.subject);
+  });
+}
+
+function selectSubject(name) {
+  currentSubject = name;
+  // Active class
+  document.querySelectorAll(".subject-item").forEach(el =>
+    el.classList.toggle("active", el.dataset.subject === name)
+  );
+  updateBreadcrumb(name);
+  renderContent(name);
+  closeSidebar();
+  localStorage.setItem("hm_subject", name);
+}
+
+/* ======================================================
+   CONTENT — MONTHS / SESSIONS / VIDEOS
+   ====================================================== */
+function renderContent(subject) {
+  const el = document.getElementById("content");
+  const months = DATA[subject];
+
+  if (!months || !Object.keys(months).length) {
+    el.innerHTML = `<div class="empty">
+      <div class="empty-icon">📂</div>
+      <div class="empty-title">Chưa có video</div>
+      <div class="empty-desc">Mở file <code>data.js</code>, tìm mục <strong>"${esc(subject)}"</strong> và dán link video vào.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = Object.entries(months).map(([mName, sessions]) => `
+    <div class="month-section">
+      <h2 class="month-title">${esc(mName)}</h2>
+      <div class="sessions">
+        ${Object.entries(sessions).map(([sName, vids]) => {
+          const hasPlaying = currentVideo && currentVideo.subject === subject
+            && currentVideo.month === mName && currentVideo.session === sName;
+          return `<div class="session-card open" data-subject="${esc(subject)}" data-month="${esc(mName)}" data-session="${esc(sName)}">
+            <button class="session-hdr">
+              <div class="session-info">
+                <span class="session-name">${esc(sName)}</span>
+                <span class="session-meta">${vids.length} video</span>
+              </div>
+              <svg class="session-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="session-body">
+              <div class="video-list">
+                ${vids.map((url, i) => {
+                  const isPlaying = currentVideo && currentVideo.url === url;
+                  return `<button class="video-item${isPlaying ? " playing" : ""}" data-subject="${esc(subject)}" data-month="${esc(mName)}" data-session="${esc(sName)}" data-index="${i}">
+                    <span class="vid-icon"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg></span>
+                    <span class="vid-name">Video ${i + 1}</span>
+                  </button>`;
+                }).join("")}
+              </div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+  `).join("");
+
+  // Event delegation — session toggle
+  el.querySelectorAll(".session-hdr").forEach(hdr =>
+    hdr.addEventListener("click", () => hdr.closest(".session-card").classList.toggle("open"))
+  );
+
+  // Event delegation — video click
+  el.addEventListener("click", e => {
+    const btn = e.target.closest(".video-item");
+    if (!btn) return;
+    const { subject: s, month: m, session: ss, index: idx } = btn.dataset;
+    playVideo(s, m, ss, parseInt(idx));
+  });
+}
+
+/* ======================================================
+   VIDEO PLAYER
+   ====================================================== */
+function playVideo(subject, month, session, index) {
+  const videos = DATA[subject]?.[month]?.[session];
+  if (!videos || !videos[index]) return;
+
+  const url = videos[index];
+  const video = document.getElementById("video");
+  const src = url;
+
+  // Show player
+  document.getElementById("playerSection").classList.add("active");
+
+  // Update now-playing text
+  document.getElementById("nowText").textContent =
+    `${subject} · ${month} · ${session} · Video ${index + 1}`;
+
+  // Highlight active video
+  document.querySelectorAll(".video-item").forEach(el => {
+    const same = el.dataset.subject === subject
+      && el.dataset.month === month
+      && el.dataset.session === session
+      && parseInt(el.dataset.index) === index;
+    el.classList.toggle("playing", same);
+  });
+
+  updateBreadcrumb(subject, month, session);
+
+  // HLS.js (desktop) or native (iOS)
+  if (typeof Hls !== "undefined" && Hls.isSupported()) {
+    if (hls) hls.destroy();
+    hls = new Hls({ enableWorker: true });
+    hls.loadSource(src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+    hls.on(Hls.Events.ERROR, (_e, data) => {
+      if (data.fatal) {
+        showError("Không thể phát video. Kiểm tra link hoặc thử bật 1.1.1.1.");
+      }
+    });
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    video.src = src;
+    video.play().catch(() => {});
+  } else {
+    showError("Trình duyệt không hỗ trợ phát HLS. Dùng Chrome hoặc Safari.");
+  }
+
+  // State
+  currentVideo = { subject, month, session, index, url };
+  localStorage.setItem("hm_video", JSON.stringify(currentVideo));
+
+  // Scroll
+  document.getElementById("playerSection").scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Auto-play next when ended
+  video.onended = () => {
+    if (index + 1 < videos.length) {
+      playVideo(subject, month, session, index + 1);
+    }
+  };
+}
+
+/* ======================================================
+   SPEED CONTROLS
+   ====================================================== */
+function initSpeedControls() {
+  document.getElementById("speedCtrl").addEventListener("click", e => {
+    const btn = e.target.closest(".speed-btn");
+    if (!btn) return;
+    const speed = parseFloat(btn.dataset.speed);
+    document.getElementById("video").playbackRate = speed;
+    document.querySelectorAll(".speed-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+}
+
+/* ======================================================
+   BREADCRUMB
+   ====================================================== */
+function updateBreadcrumb(subject, month, session) {
+  const el = document.getElementById("breadcrumb");
+  let html = `<span class="bc-item" onclick="selectSubject('${esc(subject)}')">${esc(subject)}</span>`;
+  if (month)   html += `<span class="bc-sep">›</span><span class="bc-item">${esc(month)}</span>`;
+  if (session) html += `<span class="bc-sep">›</span><span class="bc-item">${esc(session)}</span>`;
+  el.innerHTML = html;
+}
+
+/* ======================================================
+   HELPERS
+   ====================================================== */
+function countVideos(subject) {
+  let n = 0;
+  const months = DATA[subject] || {};
+  for (const m of Object.values(months))
+    for (const v of Object.values(m))
+      n += v.length;
+  return n;
+}
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function showError(msg) {
+  const el = document.getElementById("errorToast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 4000);
+}
+
+/* ======================================================
+   MOBILE
+   ====================================================== */
+function initMobile() {
+  document.getElementById("menuBtn").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("overlay").classList.toggle("show");
+  });
+  document.getElementById("overlay").addEventListener("click", closeSidebar);
+}
+
+function closeSidebar() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("overlay").classList.remove("show");
+}
+</script>
+</body>
+</html>
